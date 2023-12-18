@@ -29,7 +29,7 @@ export type GetPokemonResponse = {
       name: string;
       url: string;
     };
-  };
+  }[];
   type: string;
 };
 
