@@ -1,44 +1,8 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { apiPaths } from "../consts";
-import { typedRequest } from "../../../helper";
 import { PrismaClient } from "@prisma/client";
-
-type ResponseError = {
-  pointer?: string;
-  message: string;
-};
-
-export type GenericResponse<T> = {
-  data?: T;
-  errors?: ResponseError[];
-};
-
-export type PokemonLite = {
-  name: string;
-  url: string;
-};
-
-export type GetPokemonResponse = {
-  name: string;
-  id: number;
-  stats: {
-    base_stat: number;
-    effort: number;
-    stat: {
-      name: string;
-      url: string;
-    };
-  }[];
-  types: {
-    slot: number;
-    type: {
-      name: string;
-      url: string;
-    };
-  }[];
-};
+import { GenericResponse, GetPokemonResponse } from "../consts";
 
 export default async function handler(
   req: NextApiRequest,
@@ -102,7 +66,7 @@ export default async function handler(
     };
     return res.send({ data: mapped });
   } catch (e) {
-    console.log(e);
+    console.error(e);
     res.status(500).send({
       errors: [
         {

@@ -1,68 +1,56 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 
 import { NextApiRequest, NextApiResponse } from "next";
-import { apiPaths } from "../consts";
-import { typedRequest } from "../../../helper";
 import { PrismaClient } from "@prisma/client";
-
-type ResponseError = {
-  pointer?: string;
-  message: string;
-};
-
-export type GenericResponse<T> = {
-  data?: T;
-  errors?: ResponseError[];
-};
-
-export type PokemonLite = {
-  name: string;
-  url: string;
-};
-
-export type ListPokemonReponse = {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: PokemonLite[];
-};
+import { GenericResponse, ListPokemonReponse } from "../consts";
 
 export default async function handler(
-  req: NextApiRequest,
+  req: NextApiRequest, //type this
   res: NextApiResponse<GenericResponse<ListPokemonReponse>>
 ) {
   try {
-    if (req.method !== "GET") {
+    if (req.method !== "POST") {
       return res.status(405);
     }
 
-    const { name } = req.query;
+    // todo: validate
+
+    const { name, stats } = req.body;
+
+    const statsArray = Object.keys(stats || {}).map((key) => ({
+      statId: +key,
+      base: {
+        gt: stats[key].min,
+        lt: stats[key].max,
+      },
+    }));
 
     const client = new PrismaClient();
-    const data = await client.pokemon.findMany({
-      select: {
-        name: true,
-      },
-      ...(!!name && {
-        where: {
-          name: {
-            contains: `%${name}%`,
-          },
+    const data = (
+      await client.statOnPokemon.findMany({
+        distinct: ["pokemonId"],
+        include: {
+          pokemon: true,
         },
-      }),
-    });
+        where: {
+          ...(statsArray.length > 0 && {
+            AND: statsArray,
+          }),
+        },
+      })
+    ).filter((r) => !name || r.pokemon.name.includes(name));
 
     return res.send({
       data: {
         count: 0,
         next: "",
         previous: "",
-        results: data.map((p) => ({ ...p, url: "" })),
+        results: data.map((p) => ({ name: p.pokemon.name, url: "" })),
       },
     });
   } catch (e) {
-    console.log(e);
-    res.status(500).send({
+    console.error(e);
+    return res.status(500).send({
       errors: [
         {
           message: "INTERNAL_SERVER_ERROR",

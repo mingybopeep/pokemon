@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { GetPokemonResponse } from "../pages/api/pokemon/[name]";
+import { GetPokemonResponse } from "../pages/api/consts";
 
 const client = new PrismaClient();
 const seed = async () => {

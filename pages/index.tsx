@@ -1,23 +1,41 @@
-import type { InferGetStaticPropsType, GetStaticProps } from "next";
+import type { GetStaticProps } from "next";
 import Image from "next/image";
-import dynamic from "next/dynamic";
 import React, { SetStateAction, useEffect, useState } from "react";
+import { Type, Stat } from "@prisma/client";
 import {
   GenericResponse,
   ListPokemonReponse,
   PokemonLite,
-} from "./api/pokemon";
-import { GetPokemonResponse } from "./api/pokemon/[name]";
+  GetPokemonResponse,
+  GetTypesResponse,
+} from "./api/consts";
 import { typedRequest } from "../helper";
 
 interface IHomeProps {
   pokemonList: PokemonLite[];
+  types: Type[];
+  stats: Stat[];
 }
-export default function Home({ pokemonList }: IHomeProps) {
+
+export type SearchFilters = {
+  name: string;
+  stats: {
+    [key: number]: {
+      min: number;
+      max: number;
+    };
+  };
+  types: {
+    id: number;
+  }[];
+};
+export default function Home({ pokemonList, stats, types }: IHomeProps) {
   const [selectedName, setSelectedName] = useState("");
 
-  const [searchFilters, setSearchFilters] = useState({
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     name: "",
+    stats: [],
+    types: [],
   });
   const [searchResults, setSearchResults] = useState<PokemonLite[]>();
   const [searchState, setSearchState] = useState<"loading" | "error" | null>(
@@ -26,12 +44,17 @@ export default function Home({ pokemonList }: IHomeProps) {
 
   const onSearch = () => {
     setSearchState("loading");
-    const url = new URL("http://localhost:3000/api/pokemon/");
-    if (searchFilters.name) {
-      url.searchParams.set("name", searchFilters.name);
-    }
 
-    const fetchPromise = fetch(url.toString());
+    const url = new URL("http://localhost:3000/api/pokemon/");
+
+    const fetchPromise = fetch(url.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(searchFilters),
+    });
+
     typedRequest<GenericResponse<ListPokemonReponse>>(fetchPromise)
       .then((data) => {
         if (!data.data.results.map((p) => p.name).includes(selectedName)) {
@@ -49,9 +72,11 @@ export default function Home({ pokemonList }: IHomeProps) {
   return (
     <>
       <SideBar
+        stats={stats}
+        types={types}
         searchFilters={searchFilters}
         setSearchFilters={setSearchFilters}
-        pokemonList={searchResults}
+        pokemonList={data}
         selected={selectedName}
         setSelected={setSelectedName}
         onSearch={onSearch}
@@ -63,26 +88,48 @@ export default function Home({ pokemonList }: IHomeProps) {
 }
 
 export const getStaticProps = (async () => {
-  const fetchPromise = fetch("http://localhost:3000/api/pokemon");
-
+  // pokemon
+  const url = new URL("http://localhost:3000/api/pokemon/");
+  const fetchPromise = fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
   const res = await typedRequest<GenericResponse<ListPokemonReponse>>(
     fetchPromise
   );
+
   const {
     data: { results: pokemonList },
   } = res;
-  return { props: { pokemonList } };
+
+  // types data
+  const typesPromise = fetch("http://localhost:3000/api/types");
+  const typesRes = await typedRequest<GenericResponse<GetTypesResponse>>(
+    typesPromise
+  );
+  const {
+    data: { types, stats },
+  } = typesRes;
+
+  return { props: { pokemonList, types, stats } };
 }) satisfies GetStaticProps<{
   pokemonList: PokemonLite[];
+  types: Type[];
+  stats: Stat[];
 }>;
 
 interface ISideBarProps extends IHomeProps {
   selected: string;
   setSelected: React.Dispatch<SetStateAction<String>>;
-  searchFilters: { name: string };
-  setSearchFilters: React.Dispatch<SetStateAction<{ name: string }>>;
+  searchFilters: SearchFilters;
+  setSearchFilters: React.Dispatch<SetStateAction<SearchFilters>>;
   onSearch: () => void;
   searchState: "loading" | "error" | "null";
+  stats: Stat[];
+  types: Type[];
 }
 const SideBar = ({
   pokemonList,
@@ -92,7 +139,50 @@ const SideBar = ({
   setSearchFilters,
   onSearch,
   searchState,
+  stats,
+  types,
 }: ISideBarProps) => {
+  const toggleType = (typeId: number) => {
+    if (searchFilters.types.map((t) => t.id).includes(typeId)) {
+      return setSearchFilters({
+        ...searchFilters,
+        types: searchFilters.types.filter((t) => t.id),
+      });
+    }
+    setSearchFilters({
+      ...searchFilters,
+      types: [...searchFilters.types, { id: typeId }],
+    });
+  };
+
+  const setStat = (statId: number, key: "min" | "max", value: number) => {
+    const copied = { ...searchFilters.stats };
+    if (copied[statId]) {
+      copied[statId][key] = value;
+    } else {
+      copied[statId] = {
+        min: 0,
+        max: 100,
+        [key]: value,
+      };
+    }
+
+    setSearchFilters({
+      ...searchFilters,
+      stats: copied,
+    });
+  };
+
+  const clearStatFIlter = (statId: number) => {
+    setSearchFilters({
+      ...searchFilters,
+      stats: {
+        ...searchFilters.stats,
+        [statId]: undefined,
+      },
+    });
+  };
+
   return (
     <div
       style={{
@@ -132,6 +222,56 @@ const SideBar = ({
             setSearchFilters({ ...searchFilters, name: e.target.value })
           }
         />
+        {/* stats */}
+        {stats?.map((s) => {
+          return (
+            <div
+              key={s.id}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                padding: 10,
+              }}
+            >
+              <span>
+                <b>{s.name}</b>
+              </span>
+              <label>max base: {searchFilters.stats[s.id]?.max || 0}</label>
+              <input
+                min="0"
+                max="100"
+                value={searchFilters.stats[s.id]?.max || 0}
+                type="range"
+                onChange={(e) => setStat(s.id, "max", +e.target.value)}
+              />
+              <label>min base: {searchFilters.stats[s.id]?.min || 0}</label>
+              <input
+                min="0"
+                max="100"
+                value={searchFilters.stats[s.id]?.min || 0}
+                type="range"
+                onChange={(e) => setStat(s.id, "min", +e.target.value)}
+              />
+              <button
+                style={{
+                  border: "none",
+                  background: "red",
+                  color: "white",
+                  borderRadius: 5,
+                  padding: 5,
+                  width: 50,
+                  fontSize: 10,
+                  marginTop: 10,
+                  cursor: "pointer",
+                }}
+                onClick={() => clearStatFIlter(s.id)}
+              >
+                reset
+              </button>
+            </div>
+          );
+        })}
+
         <button
           disabled={searchState === "loading"}
           style={{
@@ -148,7 +288,7 @@ const SideBar = ({
           {searchState === "loading" ? "LOADING..." : "SEARCH"}
         </button>
       </div>
-      {pokemonList.map((p) => {
+      {pokemonList?.map((p) => {
         return (
           <div
             style={{
@@ -189,10 +329,13 @@ const PokemonView = ({ selectedName }: IPokemonView) => {
   const [imagePath, setImagePath] = useState();
 
   useEffect(() => {
-    setLoading(true);
-    getPokemonByName(selectedName)
-      .then(setPokemonData)
-      .then(() => setLoading(false));
+    if (selectedName) {
+      setLoading(true);
+      getPokemonByName(selectedName).then((data) => {
+        setLoading(false);
+        setPokemonData(data);
+      });
+    }
   }, [selectedName]);
 
   return (
@@ -227,7 +370,7 @@ const PokemonView = ({ selectedName }: IPokemonView) => {
           (!!selectedName && pokemonData && (
             <>
               <Image
-                src={`/sprites/${pokemonData.id}.svg`}
+                src={`/sprites/${pokemonData.id + 1}.svg`}
                 alt={"pokemon"}
                 width="200"
                 height="200"
