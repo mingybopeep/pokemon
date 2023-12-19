@@ -36,11 +36,20 @@ export default async function handler(
       return res.status(405);
     }
 
+    const { name } = req.query;
+
     const client = new PrismaClient();
     const data = await client.pokemon.findMany({
       select: {
         name: true,
       },
+      ...(!!name && {
+        where: {
+          name: {
+            contains: `%${name}%`,
+          },
+        },
+      }),
     });
 
     return res.send({

@@ -15,12 +15,47 @@ interface IHomeProps {
 }
 export default function Home({ pokemonList }: IHomeProps) {
   const [selectedName, setSelectedName] = useState("");
+
+  const [searchFilters, setSearchFilters] = useState({
+    name: "",
+  });
+  const [searchResults, setSearchResults] = useState<PokemonLite[]>();
+  const [searchState, setSearchState] = useState<"loading" | "error" | null>(
+    null
+  );
+
+  const onSearch = () => {
+    setSearchState("loading");
+    const url = new URL("http://localhost:3000/api/pokemon/");
+    if (searchFilters.name) {
+      url.searchParams.set("name", searchFilters.name);
+    }
+
+    const fetchPromise = fetch(url.toString());
+    typedRequest<GenericResponse<ListPokemonReponse>>(fetchPromise)
+      .then((data) => {
+        if (!data.data.results.map((p) => p.name).includes(selectedName)) {
+          setSelectedName("");
+        }
+
+        setSearchResults(data.data.results);
+        setSearchState(null);
+      })
+      .catch(() => setSearchState("error"));
+  };
+
+  const data = searchResults || pokemonList;
+
   return (
     <>
       <SideBar
-        pokemonList={pokemonList}
+        searchFilters={searchFilters}
+        setSearchFilters={setSearchFilters}
+        pokemonList={searchResults}
         selected={selectedName}
         setSelected={setSelectedName}
+        onSearch={onSearch}
+        searchState={searchState}
       />
       <PokemonView selectedName={selectedName} />
     </>
@@ -44,8 +79,20 @@ export const getStaticProps = (async () => {
 interface ISideBarProps extends IHomeProps {
   selected: string;
   setSelected: React.Dispatch<SetStateAction<String>>;
+  searchFilters: { name: string };
+  setSearchFilters: React.Dispatch<SetStateAction<{ name: string }>>;
+  onSearch: () => void;
+  searchState: "loading" | "error" | "null";
 }
-const SideBar = ({ pokemonList, selected, setSelected }: ISideBarProps) => {
+const SideBar = ({
+  pokemonList,
+  selected,
+  setSelected,
+  searchFilters,
+  setSearchFilters,
+  onSearch,
+  searchState,
+}: ISideBarProps) => {
   return (
     <div
       style={{
@@ -66,6 +113,41 @@ const SideBar = ({ pokemonList, selected, setSelected }: ISideBarProps) => {
         100px 100px 80px rgba(0, 0, 0, 0.07)s`,
       }}
     >
+      <div
+        style={{
+          padding: 10,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <input
+          style={{
+            padding: 8,
+            display: "flex",
+            flex: 1,
+          }}
+          placeholder="Search for a pokemon..."
+          value={searchFilters.name}
+          onChange={(e) =>
+            setSearchFilters({ ...searchFilters, name: e.target.value })
+          }
+        />
+        <button
+          disabled={searchState === "loading"}
+          style={{
+            marginTop: "5px",
+            padding: 10,
+            border: "none",
+            borderRadius: 5,
+            background: "rgb(255,200,0)",
+            color: "white",
+            cursor: "pointer",
+          }}
+          onClick={onSearch}
+        >
+          {searchState === "loading" ? "LOADING..." : "SEARCH"}
+        </button>
+      </div>
       {pokemonList.map((p) => {
         return (
           <div
