@@ -3,6 +3,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { apiPaths } from "../consts";
 import { typedRequest } from "../../../helper";
+import { PrismaClient } from "@prisma/client";
 
 type ResponseError = {
   pointer?: string;
@@ -30,7 +31,13 @@ export type GetPokemonResponse = {
       url: string;
     };
   }[];
-  type: string;
+  types: {
+    slot: number;
+    type: {
+      name: string;
+      url: string;
+    };
+  }[];
 };
 
 export default async function handler(
@@ -54,16 +61,44 @@ export default async function handler(
       });
     }
 
-    const url = new URL(process.env.POKEMON_API_BASE);
-    url.pathname = apiPaths.pokemon.get(name as unknown as string);
-    const request = fetch(url.toString());
-    const data = await typedRequest<GetPokemonResponse>(request);
-    // todo: handle api errors
+    const client = new PrismaClient();
+
+    const data = await client.pokemon.findFirst({
+      where: {
+        name: name as string,
+      },
+      include: {
+        StatOnPokemon: {
+          include: {
+            stat: true,
+          },
+        },
+        TypeOnPokemon: {
+          include: {
+            type: true,
+          },
+        },
+      },
+    });
+
     const mapped: GetPokemonResponse = {
       name: data.name,
       id: data.id,
-      stats: data.stats,
-      type: data.type,
+      stats: data.StatOnPokemon.map((sop) => ({
+        base_stat: sop.base,
+        effort: sop.effort,
+        stat: {
+          name: sop.stat.name,
+          url: "",
+        },
+      })),
+      types: data.TypeOnPokemon.map((top) => ({
+        slot: top.slot,
+        type: {
+          name: top.type.name,
+          url: "",
+        },
+      })),
     };
     return res.send({ data: mapped });
   } catch (e) {

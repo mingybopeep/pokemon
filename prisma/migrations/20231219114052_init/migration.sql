@@ -1,0 +1,38 @@
+-- CreateTable
+CREATE TABLE "Pokemon" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "Type" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "TypeOnPokemon" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "pokemonId" INTEGER NOT NULL,
+    "typeId" INTEGER NOT NULL,
+    "slot" INTEGER NOT NULL,
+    CONSTRAINT "TypeOnPokemon_pokemonId_fkey" FOREIGN KEY ("pokemonId") REFERENCES "Pokemon" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "TypeOnPokemon_typeId_fkey" FOREIGN KEY ("typeId") REFERENCES "Type" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Stat" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "StatOnPokemon" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "pokemonId" INTEGER NOT NULL,
+    "statId" INTEGER NOT NULL,
+    "base" INTEGER NOT NULL,
+    "effort" INTEGER NOT NULL,
+    CONSTRAINT "StatOnPokemon_pokemonId_fkey" FOREIGN KEY ("pokemonId") REFERENCES "Pokemon" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "StatOnPokemon_statId_fkey" FOREIGN KEY ("statId") REFERENCES "Stat" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);

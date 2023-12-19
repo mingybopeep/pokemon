@@ -2,6 +2,7 @@
   "name": "fe-test",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@prisma/client": "^5.7.1",
     "next": "13.4.12",
     "react": "18.2.0",
     "react-dom": "18.2.0"
@@ -17,6 +19,7 @@
     "@types/node": "^20.10.5",
     "@types/react": "18.2.45",
     "eslint": "8.22.0",
-    "eslint-config-next": "12.2.5"
+    "eslint-config-next": "12.2.5",
+    "prisma": "^5.7.1"
   }
 }

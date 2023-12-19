@@ -3,6 +3,7 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { apiPaths } from "../consts";
 import { typedRequest } from "../../../helper";
+import { PrismaClient } from "@prisma/client";
 
 type ResponseError = {
   pointer?: string;
@@ -35,14 +36,20 @@ export default async function handler(
       return res.status(405);
     }
 
-    const url = new URL(process.env.POKEMON_API_BASE);
-    url.pathname = apiPaths.pokemon.getAll();
-    url.searchParams.set("limit", "151");
-    url.searchParams.set("offset", "0");
-    const request = fetch(url.toString());
-    const data = await typedRequest<ListPokemonReponse>(request);
+    const client = new PrismaClient();
+    const data = await client.pokemon.findMany({
+      select: {
+        name: true,
+      },
+    });
+
     return res.send({
-      data,
+      data: {
+        count: 0,
+        next: "",
+        previous: "",
+        results: data.map((p) => ({ ...p, url: "" })),
+      },
     });
   } catch (e) {
     console.log(e);

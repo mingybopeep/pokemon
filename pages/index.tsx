@@ -142,16 +142,16 @@ const PokemonView = ({ selectedName }: IPokemonView) => {
         {loading ? (
           <h1>Loading</h1>
         ) : (
-          pokemonData && (
+          (!!selectedName && pokemonData && (
             <>
               <Image
-                src={`/sprites/${pokemonData?.id}.svg`}
+                src={`/sprites/${pokemonData.id}.svg`}
                 alt={"pokemon"}
                 width="200"
                 height="200"
                 style={{
                   margin: "10px auto",
-                  transform: "scale(2)",
+                  transform: "scale(1.6)",
                   position: "relative",
                   bottom: "100px",
                 }}
@@ -161,7 +161,7 @@ const PokemonView = ({ selectedName }: IPokemonView) => {
                   fontStyle: "italic",
                 }}
               >
-                {pokemonData?.name}
+                {pokemonData.name}
               </h1>
 
               <div
@@ -186,7 +186,7 @@ const PokemonView = ({ selectedName }: IPokemonView) => {
                     <span style={{ flex: 1, textAlign: "left" }}>Base</span>
                     <span style={{ flex: 1, textAlign: "left" }}>Effort</span>
                   </div>
-                  {pokemonData.stats.map((stat) => {
+                  {pokemonData.stats?.map((stat) => {
                     return (
                       <div
                         key={stat.stat.url}
@@ -213,7 +213,7 @@ const PokemonView = ({ selectedName }: IPokemonView) => {
                 </div>
               </div>
             </>
-          )
+          )) || <h1>Please select a pokemon</h1>
         )}
       </div>
     </div>
